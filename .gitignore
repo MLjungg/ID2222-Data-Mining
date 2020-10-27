@@ -129,5 +129,5 @@ dmypy.json
 .pyre/
 
 # Other
-**/data
-.DS_Store
+**/data/*
+**/.DS_Store
