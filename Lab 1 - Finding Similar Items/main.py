@@ -26,6 +26,7 @@ def create_shingles(data_frames, k):
                                                    F.expr("""transform(Ngrams,x-> regexp_replace(x,"\ ",""))"""))
         new_data_frames.append(new_data_frame)
 
+        # TODO: This doesnt work but it should be doable to use explode.
         ngram_col = F.explode(new_data_frame.Ngrams)
         ngram_frame = ngram_frame.withColumn(document_type[index], ngram_col)
 
