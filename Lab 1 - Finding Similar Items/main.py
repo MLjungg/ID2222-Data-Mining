@@ -2,6 +2,7 @@ from pyspark.sql import SparkSession
 import os
 from pyspark.sql import Row
 from pyspark.sql import functions as F
+from pyspark.sql.functions import *
 from pyspark.ml.feature import NGram, CountVectorizer, VectorAssembler
 
 
@@ -18,7 +19,11 @@ def create_shingles(data_frames, k):
     # Add chars and ngram column to dataframes
     for data_frame in data_frames:
         new_data_frame = data_frame.withColumn("Chars", F.split(data_frame.Text, ""))
+        new_data_frame = new_data_frame.withColumn("Chars",
+                                                   F.expr("""transform(Chars,x-> regexp_replace(x,"\ ","_"))"""))
         new_data_frame = ngram.transform(new_data_frame)
+        new_data_frame = new_data_frame.withColumn("Ngrams",
+                                                   F.expr("""transform(Ngrams,x-> regexp_replace(x,"\ ",""))"""))
         new_data_frames.append(new_data_frame)
 
     # TODO: Make a new dataFrame consisting of: all_ngrams | buss_ngrams | entertainment_ngrams | ..
