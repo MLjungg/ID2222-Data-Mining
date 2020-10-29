@@ -1,9 +1,8 @@
 from pyspark.sql import SparkSession
 import os
-from pyspark.sql import Row
 from pyspark.sql import functions as F
-from pyspark.sql.functions import *
-from pyspark.ml.feature import NGram, CountVectorizer, VectorAssembler
+from pyspark.sql.types import StructType
+from pyspark.ml.feature import NGram
 
 
 def setup_spark():
@@ -14,10 +13,11 @@ def setup_spark():
 
 def create_shingles(data_frames, k):
     new_data_frames = []
+    ngram_frame = spark.createDataFrame([], StructType([]))
     ngram = NGram(n=k, inputCol="Chars", outputCol="Ngrams")
 
     # Add chars and ngram column to dataframes
-    for data_frame in data_frames:
+    for index, data_frame in enumerate(data_frames):
         new_data_frame = data_frame.withColumn("Chars", F.split(data_frame.Text, ""))
         new_data_frame = new_data_frame.withColumn("Chars",
                                                    F.expr("""transform(Chars,x-> regexp_replace(x,"\ ","_"))"""))
@@ -26,26 +26,26 @@ def create_shingles(data_frames, k):
                                                    F.expr("""transform(Ngrams,x-> regexp_replace(x,"\ ",""))"""))
         new_data_frames.append(new_data_frame)
 
-    # TODO: Make a new dataFrame consisting of: all_ngrams | buss_ngrams | entertainment_ngrams | ..
-    # TODO: First "merge" a column of NGrams, i.e one cell should hold all NGram for a specific document. Then merge all five cells.
-    df = new_data_frames[0].select("Ngrams")
+        ngram_col = F.explode(new_data_frame.Ngrams)
+        ngram_frame = ngram_frame.withColumn(document_type[index], ngram_col)
 
     return new_data_frames
 
 def load_data():
     data_frames = []
+    document_type = []
 
     for _, dirs, _ in os.walk("./data/bbc"):
         for dir in dirs:
-            data_frame = sc.wholeTextFiles("./data/bbc/" + dir + "/*.txt").toDF()
+            data_frame = sc.wholeTextFiles("./data/bbc/" + dir + "/001.txt").toDF()
             data_frame = data_frame.selectExpr("_1 as Filename", "_2 as Text")
             data_frames.append(data_frame)
 
+            document_type.append(dir)
 
 
-    return data_frames
-
+    return data_frames, document_type
 
 spark, sc = setup_spark()
-data_frames = load_data()
+data_frames, document_type  = load_data()
 create_shingles(data_frames, 3)
