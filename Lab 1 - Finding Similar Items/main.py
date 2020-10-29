@@ -13,12 +13,17 @@ def setup_spark():
 
 def create_shingles(data_frames, k):
     new_data_frames = []
-    ngram = NGram(n=k, inputCol="Chars", outputCol=k + "grams")
+    ngram = NGram(n=k, inputCol="Chars", outputCol="Ngrams")
 
+    # Add chars and ngram column to dataframes
     for data_frame in data_frames:
         new_data_frame = data_frame.withColumn("Chars", F.split(data_frame.Text, ""))
         new_data_frame = ngram.transform(new_data_frame)
         new_data_frames.append(new_data_frame)
+
+    # TODO: Make a new dataFrame consisting of: all_ngrams | buss_ngrams | entertainment_ngrams | ..
+    # TODO: First "merge" a column of NGrams, i.e one cell should hold all NGram for a specific document. Then merge all five cells.
+    df = new_data_frames[0].select("Ngrams")
 
     return new_data_frames
 
@@ -30,6 +35,8 @@ def load_data():
             data_frame = sc.wholeTextFiles("./data/bbc/" + dir + "/*.txt").toDF()
             data_frame = data_frame.selectExpr("_1 as Filename", "_2 as Text")
             data_frames.append(data_frame)
+
+
 
     return data_frames
 
