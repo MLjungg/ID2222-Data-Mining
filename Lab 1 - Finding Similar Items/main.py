@@ -13,7 +13,7 @@ def setup_spark():
 
 def create_shingles(data_frames, k):
     new_data_frames = []
-    ngram_frame = spark.createDataFrame([], StructType([]))
+    ngram_frames = []
     ngram = NGram(n=k, inputCol="Chars", outputCol="Ngrams")
 
     # Add chars and ngram column to dataframes
@@ -26,15 +26,28 @@ def create_shingles(data_frames, k):
                                                    F.expr("""transform(Ngrams,x-> regexp_replace(x,"\ ",""))"""))
         new_data_frames.append(new_data_frame)
 
-        # TODO: This doesnt work but it should be doable to use explode.
-        ngram_col = F.explode(new_data_frame.Ngrams)
-        ngram_frame = ngram_frame.withColumn(document_type[index], ngram_col)
+        ngram_frame = new_data_frame.select(F.explode(new_data_frame.Ngrams)).distinct()
+        ngram_frames.append(ngram_frame)
 
-    return new_data_frames
+
+    # TODO: Check if all_ngrams grows each iteration
+    for i in range(1, len(ngram_frames)):
+        all_ngrams = ngram_frames[0].join(ngram_frames[i], on=["col"], how="outer")
+
+    all_ngrams = all_ngrams.distinct()
+    all_ngrams = all_ngrams.selectExpr("col as shingles")
+
+    for index, ngram_frame in enumerate(ngram_frames):
+        all_ngrams = all_ngrams.join(ngram_frame, all_ngrams.shingles == ngram_frame.col, how="left")
+        all_ngrams = all_ngrams.withColumnRenamed("col", document_types[index])
+
+
+
+    return all_ngrams
 
 def load_data():
     data_frames = []
-    document_type = []
+    document_types = []
 
     for _, dirs, _ in os.walk("./data/bbc"):
         for dir in dirs:
@@ -42,11 +55,13 @@ def load_data():
             data_frame = data_frame.selectExpr("_1 as Filename", "_2 as Text")
             data_frames.append(data_frame)
 
-            document_type.append(dir)
+            document_types.append(dir)
 
 
-    return data_frames, document_type
+    return data_frames, document_types
 
 spark, sc = setup_spark()
-data_frames, document_type  = load_data()
+data_frames, document_types = load_data()
 create_shingles(data_frames, 3)
+
+#TODO: Lower case?
