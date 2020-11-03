@@ -1,8 +1,9 @@
 from pyspark.sql import SparkSession
 import os
 from pyspark.sql import functions as F
-from pyspark.sql.types import StructType
+from pyspark.sql.functions import when, lit
 from pyspark.ml.feature import NGram
+import pandas
 
 
 def setup_spark():
@@ -11,9 +12,18 @@ def setup_spark():
     return spark, sc
 
 
+def create_characteristic_matrix(characteristic_matrix):
+    for document in document_types:
+        characteristic_matrix = characteristic_matrix.withColumn(document,
+                                                                 when(characteristic_matrix[document].isNull(),
+                                                                      0).otherwise(1))
+
+    return characteristic_matrix.drop('shingles')
+
+
 def create_shingles(data_frames, k):
     new_data_frames = []
-    ngram_frames = []
+    shingle_frames = []
     ngram = NGram(n=k, inputCol="Chars", outputCol="Ngrams")
 
     # Add chars and ngram column to dataframes
@@ -26,24 +36,22 @@ def create_shingles(data_frames, k):
                                                    F.expr("""transform(Ngrams,x-> regexp_replace(x,"\ ",""))"""))
         new_data_frames.append(new_data_frame)
 
-        ngram_frame = new_data_frame.select(F.explode(new_data_frame.Ngrams)).distinct()
-        ngram_frames.append(ngram_frame)
-
+        shingle_frame = new_data_frame.select(F.explode(new_data_frame.Ngrams)).distinct()
+        shingle_frames.append(shingle_frame)
 
     # TODO: Check if all_ngrams grows each iteration
-    for i in range(1, len(ngram_frames)):
-        all_ngrams = ngram_frames[0].join(ngram_frames[i], on=["col"], how="outer")
+    for i in range(1, len(shingle_frames)):
+        all_shingles = shingle_frames[0].join(shingle_frames[i], on=["col"], how="outer")
 
-    all_ngrams = all_ngrams.distinct()
-    all_ngrams = all_ngrams.selectExpr("col as shingles")
+    all_shingles = all_shingles.distinct()
+    all_shingles = all_shingles.selectExpr("col as shingles")
 
-    for index, ngram_frame in enumerate(ngram_frames):
-        all_ngrams = all_ngrams.join(ngram_frame, all_ngrams.shingles == ngram_frame.col, how="left")
-        all_ngrams = all_ngrams.withColumnRenamed("col", document_types[index])
+    for index, ngram_frame in enumerate(shingle_frames):
+        all_shingles = all_shingles.join(ngram_frame, all_shingles.shingles == ngram_frame.col, how="left")
+        all_shingles = all_shingles.withColumnRenamed("col", document_types[index])
 
+    return all_shingles
 
-
-    return all_ngrams
 
 def load_data():
     data_frames = []
@@ -57,11 +65,16 @@ def load_data():
 
             document_types.append(dir)
 
-
     return data_frames, document_types
+
+
+def min_hashing(characteristic_matrix):
+    size = characteristic_matrix
+
 
 spark, sc = setup_spark()
 data_frames, document_types = load_data()
-create_shingles(data_frames, 3)
+all_shingles = create_shingles(data_frames, 3)
+characteristic_matrix = create_characteristic_matrix(all_shingles)
 
-#TODO: Lower case?
+signature_matrix = min_hashing(characteristic_matrix)
