@@ -20,7 +20,7 @@ def create_characteristic_matrix(characteristic_matrix):
                                                                       0).otherwise(1))
 
     # Set a random number in range {0, 2^32-1} to each shingle
-    characteristic_matrix = characteristic_matrix.withColumn('shingles', rand() * ((2 ** 32) - 1))
+    #characteristic_matrix = characteristic_matrix.withColumn('shingles', rand() * ((2 ** 32) - 1))
 
     return characteristic_matrix
 
@@ -63,7 +63,7 @@ def load_data():
 
     for _, dirs, _ in os.walk("./data/bbc"):
         for dir in dirs:
-            data_frame = sc.wholeTextFiles("./data/bbc/" + dir + "/001.txt").toDF()
+            data_frame = sc.wholeTextFiles("./data/bbc/" + dir + "/*.txt").toDF()
             data_frame = data_frame.selectExpr("_1 as Filename", "_2 as Text")
             data_frames.append(data_frame)
 
@@ -137,10 +137,11 @@ def get_primes(low, high):
 
 spark, sc = setup_spark()
 data_frames, document_types = load_data()
+# A good rule of thumb is to imagine that there are only 20 characters and estimate the number ofk-shingles as 20k.
 shingles = create_shingles(data_frames, 3)
 characteristic_matrix = create_characteristic_matrix(shingles)
 compare_sets(characteristic_matrix)
 signature_matrix = min_hashing(characteristic_matrix, 100)
 compare_signatures(signature_matrix)
 
-# TODO: Lowercase all words?
+# TODO: Lowercase all words? Remove numbers? Remove special chars.
