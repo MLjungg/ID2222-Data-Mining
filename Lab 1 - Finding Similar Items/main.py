@@ -1,10 +1,12 @@
 from pyspark.sql import SparkSession
 import os
 from pyspark.sql import functions as F
-from pyspark.sql.functions import rand, when, lit
+from pyspark.sql.functions import when
 from pyspark.ml.feature import NGram
 import itertools
 import numpy as np
+import time
+import sys
 
 
 def setup_spark():
@@ -20,7 +22,7 @@ def create_characteristic_matrix(characteristic_matrix):
                                                                       0).otherwise(1))
 
     # Set a random number in range {0, 2^32-1} to each shingle
-    #characteristic_matrix = characteristic_matrix.withColumn('shingles', rand() * ((2 ** 32) - 1))
+    # characteristic_matrix = characteristic_matrix.withColumn('shingles', rand() * ((2 ** 32) - 1))
 
     return characteristic_matrix
 
@@ -65,6 +67,7 @@ def load_data():
         for dir in dirs:
             data_frame = sc.wholeTextFiles("./data/bbc/" + dir + "/*.txt").toDF()
             data_frame = data_frame.selectExpr("_1 as Filename", "_2 as Text")
+            data_frame = data_frame.withColumn('Text', F.lower('Text'))
             data_frames.append(data_frame)
 
             document_types.append(dir)
@@ -74,6 +77,7 @@ def load_data():
 
 def compare_sets(shingles):
     pairwise_document_combinations = list(itertools.combinations(document_types, 2))
+    union_and_intersect = None
 
     for document1, document2 in pairwise_document_combinations:
         shingles = shingles.withColumn(document1 + "&" + document2 + " union",
@@ -81,11 +85,21 @@ def compare_sets(shingles):
         shingles = shingles.withColumn(document1 + "&" + document2 + " intersect",
                                        shingles[document1].bitwiseAND(shingles[document2]))
 
-        union = shingles.select(F.sum(shingles[document1 + "&" + document2 + " union"])).collect()[0][0]
-        intersect = shingles.select(F.sum(shingles[document1 + "&" + document2 + " intersect"])).collect()[0][0]
+        union = shingles.select(F.sum(shingles[document1 + "&" + document2 + " union"]))
+        intersect = shingles.select(F.sum(shingles[document1 + "&" + document2 + " intersect"]))
 
-        print(
-            "Jaccard similarity between " + document1 + " and " + document2 + " is " + str(round(intersect / union, 2)))
+        if union_and_intersect == None:
+            union_and_intersect = union.union(intersect)
+        else:
+            union_and_intersect = union_and_intersect.union(union.union(intersect))
+
+    union_and_intersect = union_and_intersect.collect()
+
+    i = 0
+    for document1, document2 in pairwise_document_combinations:
+        print("Jaccard similarity between " + document1 + " and " + document2 + " is " + str(
+            round(union_and_intersect[2 * i + 1][0] / union_and_intersect[2 * i][0], 2)))
+        i += 1
 
 
 def compare_signatures(signature_matrix):
@@ -97,21 +111,22 @@ def compare_signatures(signature_matrix):
             if signature_matrix[row, document1] == signature_matrix[row, document2]:
                 similar_shingles += 1
 
-        print("Approx jaccard similarity between " + document_types[document1] + " and " + document_types[document2] + " is " + str(round(similar_shingles / signature_matrix.shape[0],2)))
+        print("Approx jaccard similarity between " + document_types[document1] + " and " + document_types[
+            document2] + " is " + str(round(similar_shingles / signature_matrix.shape[0], 2)))
         similar_shingles = 0
+
 
 def min_hashing(characteristic_matrix, number_of_hash):
     characteristic_matrix = np.array(characteristic_matrix.drop('shingles').collect())
     rows = characteristic_matrix.shape[0]
-    primes = get_primes(rows, 2*rows)
-    a = np.random.randint(1, max(primes)-1, number_of_hash)
-    b = np.random.randint(0, max(primes)-1, number_of_hash)
+    primes = get_primes(rows, 2 * rows)
+    a = np.random.randint(1, max(primes) - 1, number_of_hash)
+    b = np.random.randint(0, max(primes) - 1, number_of_hash)
     p = np.random.choice(primes, number_of_hash)
-    signature_matrix = np.ones((number_of_hash, len(document_types)))*np.inf
+    signature_matrix = np.ones((number_of_hash, len(document_types))) * np.inf
 
     for row in range(characteristic_matrix.shape[0]):
         hash_values = [(a[j] * row + b[j]) % p[j] for j in range(number_of_hash)]
-
         for col in range(characteristic_matrix.shape[1]):
             if characteristic_matrix[row, col] == 1:
                 for i in range(number_of_hash):
@@ -120,28 +135,55 @@ def min_hashing(characteristic_matrix, number_of_hash):
     return signature_matrix
 
 
-# TODO: Copied, add citation
 def get_primes(low, high):
-    sieve = np.ones(high//3 + (high%6==2), dtype=np.bool)
-    for i in range(1,int(high**0.5)//3+1):
+    sieve = np.ones(high // 3 + (high % 6 == 2), dtype=np.bool)
+    for i in range(1, int(high ** 0.5) // 3 + 1):
         if sieve[i]:
-            k=3*i+1|1
-            sieve[k*k//3::2*k] = False
-            sieve[k*(k-2*(i&1)+4)//3::2*k] = False
+            k = 3 * i + 1 | 1
+            sieve[k * k // 3::2 * k] = False
+            sieve[k * (k - 2 * (i & 1) + 4) // 3::2 * k] = False
 
-    primes = np.r_[2,3,((3*np.nonzero(sieve)[0][1:]+1)|1)]
+    primes = np.r_[2, 3, ((3 * np.nonzero(sieve)[0][1:] + 1) | 1)]
     primes = primes[primes > low]
 
     return primes
 
 
-spark, sc = setup_spark()
-data_frames, document_types = load_data()
-# A good rule of thumb is to imagine that there are only 20 characters and estimate the number ofk-shingles as 20k.
-shingles = create_shingles(data_frames, 3)
-characteristic_matrix = create_characteristic_matrix(shingles)
-compare_sets(characteristic_matrix)
-signature_matrix = min_hashing(characteristic_matrix, 100)
-compare_signatures(signature_matrix)
+def print_time(time, section):
+    print("It took " + time + " to finish " + section)
 
-# TODO: Lowercase all words? Remove numbers? Remove special chars.
+
+if __name__ == "__main__":
+    # Unpack arguments
+    k = sys.argv[1]
+    number_of_hash_functions = sys.argv[2]
+    take_time = sys.argv[3]
+
+    # Setup spark
+    spark, sc = setup_spark()
+    if take_time:
+        start_time = time.time()
+
+    # Load data
+    data_frames, document_types = load_data()
+    if take_time:
+        print_time(str(time.time() - start_time), "Loading data")
+
+    # Extract shingles and create characteristic matrix
+    shingles = create_shingles(data_frames, k)
+    if take_time:
+        print_time(str(time.time() - start_time), "creating shingles")
+    characteristic_matrix = create_characteristic_matrix(shingles)
+    if take_time:
+        print_time(str(time.time() - start_time), "characteristic_matrix")
+
+    # Compare data with Jaccard similarity algorithm
+    compare_sets(characteristic_matrix)
+    if take_time:
+        print_time(str(time.time() - start_time), "Jaccard Similarity")
+
+    # Compare data with approx Jaccard similarity algorithm
+    signature_matrix = min_hashing(characteristic_matrix, number_of_hash_functions)
+    compare_signatures(signature_matrix)
+    if take_time:
+        print_time(str(time.time() - start_time), "Approx Jaccard Similarity")
