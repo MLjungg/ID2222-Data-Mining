@@ -155,9 +155,14 @@ def print_time(time, section):
 
 if __name__ == "__main__":
     # Unpack arguments
-    k = sys.argv[1]
-    number_of_hash_functions = sys.argv[2]
-    take_time = sys.argv[3]
+    if len(sys.argv < 4):
+        k = 6
+        number_of_hash_functions = 100
+        take_time = False
+    else:
+        k = sys.argv[1]
+        number_of_hash_functions = sys.argv[2]
+        take_time = sys.argv[3]
 
     # Setup spark
     spark, sc = setup_spark()
