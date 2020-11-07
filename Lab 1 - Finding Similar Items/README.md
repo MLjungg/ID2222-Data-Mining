@@ -7,7 +7,7 @@ To run the code, run the main.py file with three arguments describing the follow
 
 K (int) - length of k-shingle  
 number_of_hash_functions (int) - number of hash fuctions to apply when constructing the signature matrix.  
-take_time (boolean) - decides if the codes outputs execution interval  
+take_time (boolean) - decides if the codes outputs execution time  
 
 If no arguments are given to the function, it will use the following as default values:  
 K = 4  
