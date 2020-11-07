@@ -6,7 +6,7 @@ The data examined is a collection of BBC-news articles covering five different g
 To run the code, run the main.py file with three arguments describing the following:  
 
 K (int) - length of k-shingle  
-number_of_hash_functions (int) - number of hash fuctions to apply when constructing the singature matrix.  
+number_of_hash_functions (int) - number of hash fuctions to apply when constructing the signature matrix.  
 take_time (boolean) - decides if the codes outputs execution interval  
 
 If no arguments are given to the function, it will use the following as default values:  
