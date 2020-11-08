@@ -102,8 +102,9 @@ def compare_sets(shingles):
         i += 1
 
 
-def compare_signatures(signature_matrix):
-    pairwise_document_combinations = list(itertools.combinations(range(len(document_types)), 2))
+def compare_signatures(signature_matrix, pairwise_document_combinations=None):
+    if pairwise_document_combinations == None:
+        pairwise_document_combinations = list(itertools.combinations(range(len(document_types)), 2))
 
     similar_shingles = 0
     for document1, document2 in pairwise_document_combinations:
@@ -135,6 +136,27 @@ def min_hashing(characteristic_matrix, number_of_hash):
     return signature_matrix
 
 
+def LSH(signature_matrix, bands, rows):
+    candidate_pairs = set()
+    for i in range(bands):
+        bucket = {}
+        band = signature_matrix[rows * i:rows * i + rows, :]
+
+        for index, col in enumerate(np.transpose(band)):
+            hash_value = hash(tuple(col))
+            if hash_value in bucket:
+                bucket[hash_value].append(index)
+            else:
+                bucket[hash_value] = [index]
+
+        for value in bucket.values():
+            if len(value) > 1:
+                for cand_pair in list(itertools.combinations(value, 2)):
+                    candidate_pairs.add(cand_pair)
+
+    return list(candidate_pairs)
+
+
 def get_primes(low, high):
     sieve = np.ones(high // 3 + (high % 6 == 2), dtype=np.bool)
     for i in range(1, int(high ** 0.5) // 3 + 1):
@@ -155,7 +177,7 @@ def print_time(time, section):
 
 if __name__ == "__main__":
     # Unpack arguments
-    if len(sys.argv < 4):
+    if len(sys.argv) < 4:
         k = 6
         number_of_hash_functions = 100
         take_time = False
@@ -183,12 +205,20 @@ if __name__ == "__main__":
         print_time(str(time.time() - start_time), "characteristic_matrix")
 
     # Compare data with Jaccard similarity algorithm
-    compare_sets(characteristic_matrix)
+    # compare_sets(characteristic_matrix)
     if take_time:
         print_time(str(time.time() - start_time), "Jaccard Similarity")
 
-    # Compare data with approx Jaccard similarity algorithm
+    # Create Signature Matrix for documents using min-hashing
     signature_matrix = min_hashing(characteristic_matrix, number_of_hash_functions)
-    compare_signatures(signature_matrix)
+
+    # Finds candidate pairs using Locality-Sensitive-Hashing (LSH).
+    candidate_pairs = LSH(signature_matrix, 25, 4)
+
+    # Compare data with approx Jaccard similarity algorithm
+    compare_signatures(signature_matrix, candidate_pairs)
+    # compare_signatures(signature_matrix)
+
     if take_time:
         print_time(str(time.time() - start_time), "Approx Jaccard Similarity")
+
