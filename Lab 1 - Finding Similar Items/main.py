@@ -65,7 +65,7 @@ def load_data():
 
     for _, dirs, _ in os.walk("./data/bbc"):
         for dir in dirs:
-            data_frame = sc.wholeTextFiles("./data/bbc/" + dir + "/*.txt").toDF()
+            data_frame = sc.wholeTextFiles("./data/bbc/" + dir + "/[0-2]**.txt").toDF()
             data_frame = data_frame.selectExpr("_1 as Filename", "_2 as Text")
             data_frame = data_frame.withColumn('Text', F.lower('Text'))
             data_frames.append(data_frame)
@@ -75,12 +75,13 @@ def load_data():
     return data_frames, document_types
 
 
-def compare_sets(shingles):
-    pairwise_document_combinations = list(itertools.combinations(document_types, 2))
+def compare_sets(shingles, pairwise_document_combinations):
+    if pairwise_document_combinations == None:
+        pairwise_document_combinations = list(itertools.combinations(range(len(document_types)), 2))
     union_and_intersect = None
 
-    for document1, document2 in pairwise_document_combinations:
-        # TODO: Translate index to document.
+    for document1_index, document2_index in pairwise_document_combinations:
+        document1, document2 = document_types[document1_index], document_types[document2_index]
         shingles = shingles.withColumn(document1 + "&" + document2 + " union",
                                        shingles[document1].bitwiseOR(shingles[document2]))
         shingles = shingles.withColumn(document1 + "&" + document2 + " intersect",
@@ -97,13 +98,14 @@ def compare_sets(shingles):
     union_and_intersect = union_and_intersect.collect()
 
     i = 0
-    for document1, document2 in pairwise_document_combinations:
-        print("Jaccard similarity between " + document1 + " and " + document2 + " is " + str(
+    for document1_index, document2_index in pairwise_document_combinations:
+        print("Jaccard similarity between " + document_types[document1_index] + " and " + document_types[
+            document2_index] + " is " + str(
             round(union_and_intersect[2 * i + 1][0] / union_and_intersect[2 * i][0], 2)))
         i += 1
 
 
-def compare_signatures(signature_matrix, pairwise_document_combinations=None):
+def compare_signatures(signature_matrix, pairwise_document_combinations):
     if pairwise_document_combinations == None:
         pairwise_document_combinations = list(itertools.combinations(range(len(document_types)), 2))
 
@@ -181,47 +183,47 @@ if __name__ == "__main__":
         k = 6
         number_of_hash_functions = 100
         take_time = False
+        run_LSH = True
     else:
-        k = sys.argv[1]
-        number_of_hash_functions = sys.argv[2]
+        k = int(sys.argv[1])
+        number_of_hash_functions = int(sys.argv[2])
         take_time = sys.argv[3]
+        run_LSH = sys.argv[4]
 
     # Setup spark
     spark, sc = setup_spark()
-    if take_time:
+    if take_time == "True":
         start_time = time.time()
 
     # Load data
     data_frames, document_types = load_data()
-    if take_time:
+    if take_time == "True":
         print_time(str(time.time() - start_time), "Loading data")
 
     # Extract shingles and create characteristic matrix
     shingles = create_shingles(data_frames, k)
-    if take_time:
+    if take_time == "True":
         print_time(str(time.time() - start_time), "creating shingles")
     characteristic_matrix = create_characteristic_matrix(shingles)
-    if take_time:
+    if take_time == "True":
         print_time(str(time.time() - start_time), "characteristic_matrix")
-
-    # Compare data with Jaccard similarity algorithm
-    # compare_sets(characteristic_matrix)
-    if take_time:
-        print_time(str(time.time() - start_time), "Jaccard Similarity")
 
     # Create Signature Matrix for documents using min-hashing
     signature_matrix = min_hashing(characteristic_matrix, number_of_hash_functions)
 
     # Finds candidate pairs using Locality-Sensitive-Hashing (LSH).
     # When b = 25 and r = 4, we have similarity threshold t = 0.447.
-    candidate_pairs = LSH(signature_matrix, 25, 4)
+    if run_LSH == "True":
+        candidate_pairs = LSH(signature_matrix, 25, 4)
+    else:
+        candidate_pairs = None
+
+    # Compare data with Jaccard similarity
+    compare_sets(characteristic_matrix, candidate_pairs)
+    if take_time:
+        print_time(str(time.time() - start_time), "Jaccard Similarity (candidate pairs)")
 
     # Compare data with approx Jaccard similarity algorithm
-    print('pairs')
     compare_signatures(signature_matrix, candidate_pairs)
-    print('all')
-    compare_signatures(signature_matrix)
-
-    if take_time:
+    if take_time == "True":
         print_time(str(time.time() - start_time), "Approx Jaccard Similarity")
-
