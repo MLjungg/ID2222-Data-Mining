@@ -80,6 +80,7 @@ def compare_sets(shingles):
     union_and_intersect = None
 
     for document1, document2 in pairwise_document_combinations:
+        # TODO: Translate index to document.
         shingles = shingles.withColumn(document1 + "&" + document2 + " union",
                                        shingles[document1].bitwiseOR(shingles[document2]))
         shingles = shingles.withColumn(document1 + "&" + document2 + " intersect",
@@ -139,20 +140,19 @@ def min_hashing(characteristic_matrix, number_of_hash):
 def LSH(signature_matrix, bands, rows):
     candidate_pairs = set()
     for i in range(bands):
-        bucket = {}
+        buckets = {}
         band = signature_matrix[rows * i:rows * i + rows, :]
 
         for index, col in enumerate(np.transpose(band)):
             hash_value = hash(tuple(col))
-            if hash_value in bucket:
-                bucket[hash_value].append(index)
+            if hash_value in buckets:
+                buckets[hash_value].append(index)
             else:
-                bucket[hash_value] = [index]
+                buckets[hash_value] = [index]
 
-        for value in bucket.values():
-            if len(value) > 1:
-                for cand_pair in list(itertools.combinations(value, 2)):
-                    candidate_pairs.add(cand_pair)
+        for bucket in buckets.values():
+            if len(bucket) > 1:
+                candidate_pairs.update(list(itertools.combinations(bucket, 2)))
 
     return list(candidate_pairs)
 
@@ -213,11 +213,14 @@ if __name__ == "__main__":
     signature_matrix = min_hashing(characteristic_matrix, number_of_hash_functions)
 
     # Finds candidate pairs using Locality-Sensitive-Hashing (LSH).
+    # When b = 25 and r = 4, we have similarity threshold t = 0.447.
     candidate_pairs = LSH(signature_matrix, 25, 4)
 
     # Compare data with approx Jaccard similarity algorithm
+    print('pairs')
     compare_signatures(signature_matrix, candidate_pairs)
-    # compare_signatures(signature_matrix)
+    print('all')
+    compare_signatures(signature_matrix)
 
     if take_time:
         print_time(str(time.time() - start_time), "Approx Jaccard Similarity")
