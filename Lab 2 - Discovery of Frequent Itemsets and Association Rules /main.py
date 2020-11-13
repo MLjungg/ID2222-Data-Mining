@@ -114,7 +114,7 @@ def load_data():
 def main():
     baskets = load_data()
     frequent_itemsets = a_priori_algorithm(baskets)  # This return all
-    print("Done")
+    print("Done!")
 
 
 main()
