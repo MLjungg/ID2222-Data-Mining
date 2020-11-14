@@ -111,23 +111,25 @@ def load_data():
 
     return data
 
-def association_rules(frequent_itemsets, count):
+def find_rules(frequent_itemsets, count):
+    association_rules = []
+    threshold = 0.5
     for itemsets in frequent_itemsets:
         for itemset in frequent_itemsets[itemsets]:
             # Create all sub-tup
-            subtuples = [list(x) for x in itertools.combinations(itemset, len(itemset) - 1)]
-            for subtuple in subtuples:
-                confidence = 0
-            confidence = 'T'
 
-            pass
-    return 1
+            subsets = [list(x) for x in itertools.combinations(itemset, len(itemset) - 1)]
+            for subset in subsets:
+                confidence = count[itemset] / count[subset]
+                if confidence > threshold:
+                    association_rules.append(subset, itemset)
+    return association_rules
 
 
 def main():
     baskets = load_data()
     frequent_itemsets, count = a_priori_algorithm(baskets)  # This return all
-    association_rules(frequent_itemsets, count)
+    association_rules = find_rules(frequent_itemsets, count)
     print("Done!")
 
 
