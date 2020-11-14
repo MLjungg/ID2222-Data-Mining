@@ -4,7 +4,7 @@ import itertools
 def a_priori_algorithm(baskets):
     # Init variables
     count = {}
-    similarity_threshold = 500
+    similarity_threshold = 700
 
     # first pass (n=1)
     for basket in baskets:
@@ -16,9 +16,9 @@ def a_priori_algorithm(baskets):
                 count[item] += 1
 
     # second pass (n --> infinity)
-    stored_itemsets = n_pass(baskets, similarity_threshold, count)
+    stored_itemsets, count = n_pass(baskets, similarity_threshold, count)
 
-    return stored_itemsets
+    return stored_itemsets, count
 
 
 def n_pass(baskets, similarity_threshold, count):
@@ -27,7 +27,7 @@ def n_pass(baskets, similarity_threshold, count):
     stored_itemsets = {}
     while new_itemsets:
         n = n + 1
-        stored_itemsets[n] = set()
+        stored_itemsets[n-1] = set() # Previous n-itemset
         new_itemsets = False
         for index, basket in enumerate(baskets):
             frequent_itemset = []
@@ -40,16 +40,17 @@ def n_pass(baskets, similarity_threshold, count):
                         frequent_itemset.append(item)
             itemsets = generate_itemsets(frequent_itemset, count, n, similarity_threshold)
             if len(itemsets) > 0:
-                stored_itemsets[n].update(itemsets)
+                stored_itemsets[n-1].update(frequent_itemset)
                 new_itemsets = True
             baskets[index] = itemsets
+            # TODO: countFrequents(baskets)
             for itemset in itemsets:
                 if not itemset in count:
                     count[itemset] = 1
                 else:
                     count[itemset] += 1
 
-    return stored_itemsets
+    return stored_itemsets, count
 
 
 def generate_itemsets(frequent_itemset, count, n, similarity_threshold):
@@ -110,10 +111,23 @@ def load_data():
 
     return data
 
+def association_rules(frequent_itemsets, count):
+    for itemsets in frequent_itemsets:
+        for itemset in frequent_itemsets[itemsets]:
+            # Create all sub-tup
+            subtuples = [list(x) for x in itertools.combinations(itemset, len(itemset) - 1)]
+            for subtuple in subtuples:
+                confidence = 0
+            confidence = 'T'
+
+            pass
+    return 1
+
 
 def main():
     baskets = load_data()
-    frequent_itemsets = a_priori_algorithm(baskets)  # This return all
+    frequent_itemsets, count = a_priori_algorithm(baskets)  # This return all
+    association_rules(frequent_itemsets, count)
     print("Done!")
 
 
