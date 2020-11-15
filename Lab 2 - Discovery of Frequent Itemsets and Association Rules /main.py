@@ -121,13 +121,13 @@ def find_rules(frequent_itemsets, similarity_threshold, count):
                 if count[itemset] > similarity_threshold:
                     subsets = generate_subsets(itemset)
                     for subset in subsets:
-                        try:
+                        try: # Temperary solution until order is certain.
                             confidence = count[itemset] / count[subset]
                             if confidence > threshold:
                                 association_rules.append([subset, tuple(set(itemset).difference(set(subset))), confidence])
                         except KeyError:
                             error_count += 1
-    return association_rules
+    return sorted(association_rules, key=lambda x: x[2], reverse=True)
 
 
 def generate_subsets(itemset):
