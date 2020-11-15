@@ -113,17 +113,29 @@ def load_data():
 
 def find_rules(frequent_itemsets, count):
     association_rules = []
-    threshold = 0.5
-    for itemsets in frequent_itemsets:
-        for itemset in frequent_itemsets[itemsets]:
-            # Create all sub-tup
-
-            subsets = [list(x) for x in itertools.combinations(itemset, len(itemset) - 1)]
-            for subset in subsets:
-                confidence = count[itemset] / count[subset]
-                if confidence > threshold:
-                    association_rules.append(subset, itemset)
+    threshold = 0.7
+    error_count = 0
+    # TODO: Adjust loop to data structure of frequent_itemsets when updated
+    for itemsets_size in frequent_itemsets:
+        if itemsets_size != 1:
+            for itemset in frequent_itemsets[itemsets_size]:
+                if count[itemset] > 700:
+                    subsets = generate_subsets(itemset)
+                    for subset in subsets:
+                        try:
+                            confidence = count[itemset] / count[subset]
+                            if confidence > threshold:
+                                association_rules.append([subset, tuple(set(itemset).difference(set(subset))), confidence])
+                        except KeyError:
+                            error_count += 1
     return association_rules
+
+
+def generate_subsets(itemset):
+    subsets = set()
+    for r in range(1, len(itemset)):
+        subsets.update(list(itertools.combinations(itemset, r)))
+    return subsets
 
 
 def main():
