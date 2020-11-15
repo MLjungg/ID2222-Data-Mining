@@ -110,23 +110,18 @@ def load_data():
 
     return data
 
-def find_rules(frequent_itemsets, similarity_threshold, count):
+def find_rules(frequent_itemsets, support, c):
     association_rules = []
-    threshold = 0.7
-    error_count = 0
-    # TODO: Adjust loop to data structure of frequent_itemsets when updated
+
+    # iterates itemsets of all sizes
     for itemsets_size in frequent_itemsets:
-        if itemsets_size != 1:
+        if itemsets_size != 1: # If not considering single items.
             for itemset in frequent_itemsets[itemsets_size]:
-                if count[itemset] > similarity_threshold:
-                    subsets = generate_subsets(itemset)
-                    for subset in subsets:
-                        try: # Temperary solution until order is certain.
-                            confidence = count[itemset] / count[subset]
-                            if confidence > threshold:
-                                association_rules.append([subset, tuple(set(itemset).difference(set(subset))), confidence])
-                        except KeyError:
-                            error_count += 1
+                subsets = generate_subsets(itemset)
+                for subset in subsets:
+                    confidence = support[itemset] / support[subset]
+                    if confidence > c:
+                        association_rules.append([subset, tuple(set(itemset).difference(set(subset))), confidence])
     return sorted(association_rules, key=lambda x: x[2], reverse=True)
 
 
@@ -139,9 +134,10 @@ def generate_subsets(itemset):
 
 def main():
     baskets = load_data()
-    similarity_threshold = 1000
-    frequent_itemsets, count = a_priori_algorithm(baskets, similarity_threshold)
-    association_rules = find_rules(frequent_itemsets, similarity_threshold, count)
+    similarity_threshold = 700
+    c = 0.9
+    frequent_itemsets, support = a_priori_algorithm(baskets, similarity_threshold)
+    association_rules = find_rules(frequent_itemsets, support, c)
     print("Done!")
 
 
