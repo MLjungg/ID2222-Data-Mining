@@ -1,10 +1,9 @@
 import itertools
 
 
-def a_priori_algorithm(baskets):
-    # Init variables
+def a_priori_algorithm(baskets, similarity_threshold):
+    # Initate a dict to keep track of occurrence count of respective itemset.
     count = {}
-    similarity_threshold = 700
 
     # first pass (n=1)
     for basket in baskets:
@@ -16,41 +15,41 @@ def a_priori_algorithm(baskets):
                 count[item] += 1
 
     # second pass (n --> infinity)
-    stored_itemsets, count = n_pass(baskets, similarity_threshold, count)
+    frequent_itemsets, count = n_pass(baskets, similarity_threshold, count)
 
-    return stored_itemsets, count
+    return frequent_itemsets, count
 
 
 def n_pass(baskets, similarity_threshold, count):
-    n = 1
-    new_itemsets = True    # Stores information about if we shall look for a higher order of itemset.
-    stored_itemsets = {}
+    n = 1                   # Length of itemset
+    new_itemsets = True     # Stores information about if we shall look for a higher order of itemset.
+    frequent_itemsets = {}    # Key = length of itemset, value = all frequent valid itemsets of length key.
     while new_itemsets:
         n = n + 1
-        stored_itemsets[n-1] = set() # Previous n-itemset
+        frequent_itemsets[n-1] = set()  # Previous n-itemset
         new_itemsets = False
         for index, basket in enumerate(baskets):
-            frequent_itemset = []
+            frequent_itemset_in_basket = []
             for item in basket:
                 if n == 2:
                     if count[tuple([item])] > similarity_threshold:
-                        frequent_itemset.append(item)
+                        frequent_itemset_in_basket.append(item)
                 else:
                     if count[item] > similarity_threshold:
-                        frequent_itemset.append(item)
-            itemsets = generate_itemsets(frequent_itemset, count, n, similarity_threshold)
-            if len(itemsets) > 0:
-                stored_itemsets[n-1].update(frequent_itemset)
+                        frequent_itemset_in_basket.append(item)
+
+            higher_order_itemsets = generate_itemsets(frequent_itemset_in_basket, count, n, similarity_threshold)
+            if len(higher_order_itemsets) > 0:
+                frequent_itemsets[n-1].update(frequent_itemset_in_basket)
                 new_itemsets = True
-            baskets[index] = itemsets
-            # TODO: countFrequents(baskets)
-            for itemset in itemsets:
+            baskets[index] = higher_order_itemsets
+            for itemset in higher_order_itemsets:
                 if not itemset in count:
                     count[itemset] = 1
                 else:
                     count[itemset] += 1
 
-    return stored_itemsets, count
+    return frequent_itemsets, count
 
 
 def generate_itemsets(frequent_itemset, count, n, similarity_threshold):
@@ -69,7 +68,7 @@ def generate_itemsets(frequent_itemset, count, n, similarity_threshold):
 
                 # If still valid, store the new itemset
                 if valid_itemset:
-                    valid_itemsets.append(tuple(sorted(set_singletons)))
+                    valid_itemsets.append(tuple(sorted(set_singletons, key=int)))
 
         return valid_itemsets
 
@@ -111,7 +110,7 @@ def load_data():
 
     return data
 
-def find_rules(frequent_itemsets, count):
+def find_rules(frequent_itemsets, similarity_threshold, count):
     association_rules = []
     threshold = 0.7
     error_count = 0
@@ -119,7 +118,7 @@ def find_rules(frequent_itemsets, count):
     for itemsets_size in frequent_itemsets:
         if itemsets_size != 1:
             for itemset in frequent_itemsets[itemsets_size]:
-                if count[itemset] > 700:
+                if count[itemset] > similarity_threshold:
                     subsets = generate_subsets(itemset)
                     for subset in subsets:
                         try:
@@ -140,8 +139,9 @@ def generate_subsets(itemset):
 
 def main():
     baskets = load_data()
-    frequent_itemsets, count = a_priori_algorithm(baskets)  # This return all
-    association_rules = find_rules(frequent_itemsets, count)
+    similarity_threshold = 1000
+    frequent_itemsets, count = a_priori_algorithm(baskets, similarity_threshold)
+    association_rules = find_rules(frequent_itemsets, similarity_threshold, count)
     print("Done!")
 
 
