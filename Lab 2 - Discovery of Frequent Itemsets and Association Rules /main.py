@@ -111,6 +111,8 @@ def load_data():
     for basket in file.readlines():
         data.append(basket[0:-2].split(" "))
 
+    print("Finished loading data..\n")
+
     return data
 
 
