@@ -108,11 +108,11 @@ def higher_order_validation(itemset, n):
 
 
 def load_data():
+    print("Started loading data..\n")
     data = []
     file = open("./data/T10I4D100K.dat", "r")
     for basket in file.readlines():
         data.append(basket[0:-2].split(" "))
-
     print("Finished loading data..\n")
 
     return data
@@ -171,7 +171,7 @@ if __name__ == "__main__":
         c = 0.9
     else:
         similarity_threshold = int(sys.argv[1])
-        c = int(sys.argv[2])
+        c = float(sys.argv[2])
 
     baskets = load_data()
 
