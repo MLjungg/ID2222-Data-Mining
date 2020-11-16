@@ -21,12 +21,12 @@ def a_priori_algorithm(baskets, similarity_threshold):
 
 
 def n_pass(baskets, similarity_threshold, count):
-    n = 1                   # Length of itemset
-    new_itemsets = True     # Stores information about if we shall look for a higher order of itemset.
-    frequent_itemsets = {}    # Key = length of itemset, value = all frequent valid itemsets of length key.
+    n = 1  # Length of itemset
+    new_itemsets = True  # Stores information about if we shall look for a higher order of itemset.
+    frequent_itemsets = {}  # Key = length of itemset, value = all frequent valid itemsets of length key.
     while new_itemsets:
         n = n + 1
-        frequent_itemsets[n-1] = set()  # Previous n-itemset
+        frequent_itemsets[n - 1] = set()  # Previous n-itemset
         new_itemsets = False
         for index, basket in enumerate(baskets):
             frequent_itemset_in_basket = []
@@ -40,8 +40,9 @@ def n_pass(baskets, similarity_threshold, count):
 
             higher_order_itemsets = generate_itemsets(frequent_itemset_in_basket, count, n, similarity_threshold)
             if len(higher_order_itemsets) > 0:
-                frequent_itemsets[n-1].update(frequent_itemset_in_basket)
                 new_itemsets = True
+            if len(frequent_itemset_in_basket) > 0:
+                frequent_itemsets[n - 1].update(frequent_itemset_in_basket)
             baskets[index] = higher_order_itemsets
             for itemset in higher_order_itemsets:
                 if not itemset in count:
@@ -64,7 +65,8 @@ def generate_itemsets(frequent_itemset, count, n, similarity_threshold):
         for itemset in itemsets:
             valid_itemset = check_frequent(itemset, similarity_threshold, count)
             if valid_itemset:
-                valid_itemset, set_singletons = higher_order_validation(itemset, n) # set_singletons return the n+1-itemset.
+                valid_itemset, set_singletons = higher_order_validation(itemset,
+                                                                        n)  # set_singletons return the n+1-itemset.
 
                 # If still valid, store the new itemset
                 if valid_itemset:
@@ -92,7 +94,8 @@ def higher_order_validation(itemset, n):
             singletons.append(singleton)
     set_singletons = set(singletons)
     for singleton in set_singletons:
-        if singletons.count(singleton) != n - 1:  # E.g for the triple [1,2,3] to be valid each singleton needs to exist 3-1 times.
+        if singletons.count(
+                singleton) != n - 1:  # E.g for the triple [1,2,3] to be valid each singleton needs to exist 3-1 times.
             valid_itemset = False
             break
 
@@ -110,12 +113,13 @@ def load_data():
 
     return data
 
+
 def find_rules(frequent_itemsets, support, c):
     association_rules = []
 
     # iterates itemsets of all sizes
     for itemsets_size in frequent_itemsets:
-        if itemsets_size != 1: # If not considering single items.
+        if itemsets_size != 1:  # If not considering single items.
             for itemset in frequent_itemsets[itemsets_size]:
                 subsets = generate_subsets(itemset)
                 for subset in subsets:
@@ -125,6 +129,19 @@ def find_rules(frequent_itemsets, support, c):
     return sorted(association_rules, key=lambda x: x[2], reverse=True)
 
 
+def print_freq_results(frequent_itemsets, support):
+    for n, itemsets in frequent_itemsets.items():
+        print(
+            "\n"
+            + "Frequent items with size n=" + str(n) + " (" + str(len(frequent_itemsets[n])) + ") " + "sets")
+
+        for i, itemset in enumerate(itemsets):
+            print(itemset)
+            if i > 20:
+                print(" ... ")
+                break
+
+
 def generate_subsets(itemset):
     subsets = set()
     for r in range(1, len(itemset)):
@@ -132,13 +149,28 @@ def generate_subsets(itemset):
     return subsets
 
 
+def print_assoc_result(association_rules):
+    print("\n======================ASSOCIATION RULES======================================\n")
+    print("I".ljust(24), "=>".ljust(36), "J".ljust(48), "CONFIDENCE")
+    for rule in association_rules:
+        i = str(rule[0])
+        j = str(rule[1])
+        confidence = str(rule[2])
+
+        print(i.ljust(24), "=>".ljust(36), j.ljust(48), confidence)
+
+
 def main():
     baskets = load_data()
-    similarity_threshold = 700
+    similarity_threshold = 1000
     c = 0.9
+
     frequent_itemsets, support = a_priori_algorithm(baskets, similarity_threshold)
+    print_freq_results(frequent_itemsets, support)
+
     association_rules = find_rules(frequent_itemsets, support, c)
-    print("Done!")
+    print_assoc_result(association_rules)
+
 
 
 main()
