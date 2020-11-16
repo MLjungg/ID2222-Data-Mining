@@ -1,4 +1,6 @@
 import itertools
+import sys
+import time
 
 
 def a_priori_algorithm(baskets, similarity_threshold):
@@ -162,17 +164,19 @@ def print_assoc_result(association_rules):
         print(i.ljust(24), "=>".ljust(36), j.ljust(48), confidence)
 
 
-def main():
+if __name__ == "__main__":
+    # Unpack arguments
+    if len(sys.argv) < 3:
+        similarity_threshold = 1000
+        c = 0.9
+    else:
+        similarity_threshold = int(sys.argv[1])
+        c = int(sys.argv[2])
+
     baskets = load_data()
-    similarity_threshold = 1000
-    c = 0.9
 
     frequent_itemsets, support = a_priori_algorithm(baskets, similarity_threshold)
     print_freq_results(frequent_itemsets, support)
 
     association_rules = find_rules(frequent_itemsets, support, c)
     print_assoc_result(association_rules)
-
-
-
-main()
