@@ -1,4 +1,4 @@
-# Lab1-Discovery of Frequent Itemsets and Assocation Rules
+# Lab2-Discovery of Frequent Itemsets and Assocation Rules
 The purpose of this exercise is to find frequent itemsets with corresponding assocations rules.
 
 
