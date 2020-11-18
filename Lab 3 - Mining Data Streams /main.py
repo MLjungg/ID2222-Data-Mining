@@ -57,8 +57,15 @@ def get_new_wedges(new_edge):
 
     return new_wedges
 
+def find_triangles(edge):
+    # Finds all wedges that are closed by edge. Closed wedge is a Triangle.
+    for i in range(wedge_res_size):
+        # Assuming directed graph
+        if edge[0] == wedge_res[i][2] and edge[1] == wedge_res[i][0]:
+            isClosed[i] = True
 
 def update(edge, time, tot_wedges):
+    find_triangles(edge)
     for i in range(wedge_res_size):
         if edge_close_wedge(edge, wedge_res[i], time):
             isClosed[i] = True
@@ -68,7 +75,6 @@ def update(edge, time, tot_wedges):
         if len(new_wedges) > 0:
             tot_wedges += len(new_wedges)
             reservoir_sampling_wedge(new_wedges, tot_wedges)
-
 
 # Get stream
 stream = get_stream()
