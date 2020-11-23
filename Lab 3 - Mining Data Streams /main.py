@@ -1,6 +1,13 @@
 import numpy
 
 
+def get_stream():
+    print("Started loading stream..\n")
+    file = open("./data/web-Stanford_shuffled.txt", "r")
+    print("Finished loading stream..\n")
+
+    return file
+
 def reservoir_sampling_edge(edge, time):
     updated = False
     x = numpy.random.uniform(0, 1)
@@ -21,18 +28,6 @@ def reservoir_sampling_wedge(wedges, tot_wedges):
             isClosed[i] = False
             if len(wedges) == 0:
                 return
-
-def get_stream():
-    # TODO: Make it random
-    print("Started loading stream..\n")
-    #file = open("./data/web-BerkStan_shuffled.txt", "r")
-    #file = open("./data/test.txt", "r")
-    file = open("./data/web-Stanford_shuffled.txt", "r")
-    #file = open("./data/web-Stanford_test.txt", "r")
-
-    print("Finished loading stream..\n")
-
-    return file
 
 
 def get_new_wedges(new_edge):
@@ -90,10 +85,14 @@ for edge in stream.readlines():
 
     if (time % 100000) == 0:
         print(time)
-        print("The number of wedges is:" + str(tot_wedges))
+        print("The number of wedges is: " + str(tot_wedges))
 
         p = numpy.sum(isClosed) / numpy.shape(isClosed)
         k = 3 * p
         t = ((p * numpy.power(time, 2)) / (edge_res_size * (edge_res_size - 1))) * tot_wedges
-        print(p)
-        print(t)
+        print("Number of triangle after " + str(time) + " processed edges is " + str(t[0]))
+
+p = numpy.sum(isClosed) / numpy.shape(isClosed)
+k = 3 * p
+t = ((p * numpy.power(time, 2)) / (edge_res_size * (edge_res_size - 1))) * tot_wedges
+print("The total number of triangle are approximated to " + str(t[0]))
