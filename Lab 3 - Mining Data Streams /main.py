@@ -1,4 +1,5 @@
 import numpy
+from matplotlib import pyplot as plt
 
 
 def get_stream():
@@ -78,6 +79,8 @@ edge_res = numpy.zeros((edge_res_size, 2))
 wedge_res = numpy.zeros((wedge_res_size, 3))
 isClosed = numpy.zeros(wedge_res_size)
 
+triangles = []
+
 for edge in stream.readlines():
     time = time + 1
     edge = numpy.array(edge.strip("\n").split("\t"), dtype=int)
@@ -91,8 +94,17 @@ for edge in stream.readlines():
         k = 3 * p
         t = ((p * numpy.power(time, 2)) / (edge_res_size * (edge_res_size - 1))) * tot_wedges
         print("Number of triangle after " + str(time) + " processed edges is " + str(t[0]))
+        triangles.append(t)
 
 p = numpy.sum(isClosed) / numpy.shape(isClosed)
 k = 3 * p
 t = ((p * numpy.power(time, 2)) / (edge_res_size * (edge_res_size - 1))) * tot_wedges
+triangles.append(t)
 print("The total number of triangle are approximated to " + str(t[0]))
+
+plt.plot(triangles)
+plt.xlabel("Time")
+plt.ylabel("Approx number of triangles")
+plt.title("Approximated number of triangles over time")
+plt.show()
+
